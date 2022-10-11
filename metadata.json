@@ -22,7 +22,7 @@
     },
     {
       "name": "puppetlabs/apt",
-      "version_requirement": ">=4.4.0 <9.0.0"
+      "version_requirement": ">=2.4.0"
     },
     {
       "name": "puppetlabs/puppetserver_gem",
@@ -38,7 +38,7 @@
     },
     {
       "name": "puppet/zypprepo",
-      "version_requirement": ">=3.1.0 <4.0.0"
+      "version_requirement": ">=2.2.2"
     }
   ],
   "operatingsystem_support": [
