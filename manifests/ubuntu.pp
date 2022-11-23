@@ -10,10 +10,7 @@ class datadog_agent::ubuntu(
   String $release = $datadog_agent::params::apt_default_release,
   Boolean $skip_apt_key_trusting = false,
   String $agent_flavor = $datadog_agent::params::package_name,
-  Optional[String] $apt_trusted_d_keyring = '/etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg',
-  Optional[String] $apt_usr_share_keyring = '/usr/share/keyrings/datadog-archive-keyring.gpg',
   Optional[Hash[String, String]] $apt_default_keys = {
-    'DATADOG_APT_KEY_CURRENT.public'           => 'https://keys.datadoghq.com/DATADOG_APT_KEY_CURRENT.public',
     'D75CEA17048B9ACBF186794B32637D44F14F620E' => 'https://keys.datadoghq.com/DATADOG_APT_KEY_F14F620E.public',
     'A2923DFF56EDA6E76E55E492D3A80E30382E94DE' => 'https://keys.datadoghq.com/DATADOG_APT_KEY_382E94DE.public',
   },
@@ -34,38 +31,9 @@ class datadog_agent::ubuntu(
   }
 
   if !$skip_apt_key_trusting {
-    ensure_packages(['gnupg'])
-
-    file { $apt_usr_share_keyring:
-      ensure => file,
-      mode   => '0644',
-    }
-
     $apt_default_keys.each |String $key_fingerprint, String $key_url| {
-      $key_path = "/tmp/${key_fingerprint}"
-
-      file { $key_path:
-        owner  => root,
-        group  => root,
-        mode   => '0600',
+      apt::key { $key_fingerprint:
         source => $key_url,
-      }
-
-      exec { "ensure key ${key_fingerprint} is imported in APT keyring":
-        command => "/bin/cat /tmp/${key_fingerprint} | gpg --import --batch --no-default-keyring --keyring ${apt_usr_share_keyring}",
-        # the second part extracts the fingerprint of the key from output like "fpr::::A2923DFF56EDA6E76E55E492D3A80E30382E94DE:"
-        unless  => @("CMD"/L)
-          /usr/bin/gpg --no-default-keyring --keyring ${apt_usr_share_keyring} --list-keys --with-fingerprint --with-colons | grep \
-          $(cat /tmp/${key_fingerprint} | gpg --with-colons --with-fingerprint 2>/dev/null | grep 'fpr:' | sed 's|^fpr||' | tr -d ':')
-          | CMD
-      }
-    }
-
-    if ($::operatingsystem == 'Ubuntu' and versioncmp($::operatingsystemrelease, '16') == -1) or
-        ($::operatingsystem == 'Debian' and versioncmp($::operatingsystemrelease, '9') == -1) {
-      file { $apt_trusted_d_keyring:
-        mode   => '0644',
-        source => "file://${apt_usr_share_keyring}",
       }
     }
   }
@@ -73,7 +41,7 @@ class datadog_agent::ubuntu(
   if ($agent_repo_uri != undef) {
     $location = $agent_repo_uri
   } else {
-    $location = "[signed-by=${apt_usr_share_keyring}] https://apt.datadoghq.com/"
+    $location = "https://apt.datadoghq.com/"
   }
 
   apt::source { 'datadog-beta':
